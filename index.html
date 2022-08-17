@@ -1,0 +1,142 @@
+<html>
+
+<head>
+  <title>A Webpage</title>
+  <link href="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" rel="icon"
+    type="image/x-icon" />
+</head>
+
+<body>
+  <script>
+    "use strict"
+    let state = 1;
+
+    let gameObjects = []
+
+    class GameObject{
+      constructor(){
+        this.markForDelete = false;
+      }
+    }
+
+    class Ship extends GameObject{
+      x
+      y
+      constructor(x, y) {
+        super()
+        this.x = x;
+        this.y = y
+      }
+    }
+
+    class Laser extends GameObject{
+      constructor(x, y, speed, angle) {
+        super()
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
+        this.angle = angle;
+      }
+      update(time) {
+        this.x += Math.cos(this.angle) * this.speed * time;
+        this.y += Math.sin(this.angle) * this.speed * time;
+
+        if(Math.abs(this.x) > 2 || Math.abs(this.y) > 2){
+          this.markForDelete = true;
+        }
+      }
+      draw(ctx){
+        ctx.fillStyle = "black"
+        ctx.fillRect(this.x-.1, this.y-.1, .2, .2)
+      }
+    }
+
+    class SpaceShip extends Ship {
+      constructor(x, y) {
+        super(x, y)
+        this.timeToFire = 1
+        this.fillStyle = "red"
+      }
+      update(time) {
+        this.timeToFire -= time
+        if (this.timeToFire <= 0) {
+          this.fire();
+          this.timeToFire = 1
+        }
+      }
+      draw(ctx){
+        ctx.fillStyle = this.fillStyle
+        ctx.fillRect(this.x-.5, this.y-.5, 1, 1);
+      }
+    }
+
+    class GoodSpaceShip extends SpaceShip {
+      constructor(x, y) {
+        super(x, y)
+        this.fillStyle = "green"
+      }
+      fire() {
+        let toAdd = new Laser(this.x, this.y, 1, Math.PI / 4)
+        gameObjects.push(toAdd)
+      }
+    }
+
+    class EnemySpaceShip extends SpaceShip {
+      constructor(x, y) {
+        super(x, y)
+      }
+      fire() {
+        for (let i = 0; i < 10; i++) {
+          let toAdd = new Laser(this.x, this.y, 1, (i/10) * Math.PI * 2)
+          gameObjects.push(toAdd)
+        }
+      }
+    }
+
+    let goodSpaceShip = new GoodSpaceShip(0,0);
+    gameObjects.push(goodSpaceShip);
+
+
+
+    function firstUpdate(options) {
+      options.ignoreEvents = true;
+      //options.tickOnce = true;
+      options.cameraZoom = 100;
+
+    }
+
+
+    function customUpdate(options, time) {
+      //console.log("Custom Update")
+      for(let gameObject of gameObjects){
+        gameObject.update(time);
+      }
+
+      //Prune
+      let preservedGameObjects = []
+      for(let gameObject of gameObjects){
+        if(!gameObject.markForDelete)
+          preservedGameObjects.push(gameObject)
+      }
+      gameObjects = preservedGameObjects;
+
+    }
+
+    function customDraw(ctx, options) {
+      //console.log("Custom Draw")
+      for(let gameObject of gameObjects){
+        gameObject.draw(ctx);
+      }
+
+    }
+
+    function customUI(ctx, options) {
+      //console.log("Custom UI")
+    }
+
+  </script>
+  <script src="canvas.js"></script>
+
+</body>
+
+</html>
