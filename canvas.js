@@ -59,10 +59,8 @@
    update(options);
  
    ///Start a timer
-   if (typeof options.tickOnce !== 'undefined' && options.tickOnce)
-     setTimeout(tick, 33)
-   else
-     setInterval(tick, 33);    								///Initialize the timer
+    setTimeout(tick, 33)
+   							///Initialize the timer
  }
  
  ///This gets called evertime the timer ticks
@@ -79,6 +77,7 @@
  
  
    drawCanvas();
+   setTimeout(tick, 33)
  }
  
  ///This gets called whenever the window size changes and the 

@@ -30,23 +30,27 @@
     }
 
     class Laser extends GameObject{
-      constructor(x, y, speed, angle) {
+      constructor(x, y, speed, angle, origin) {
         super()
         this.x = x;
         this.y = y;
         this.speed = speed;
         this.angle = angle;
+        this.origin = origin
       }
       update(time) {
         this.x += Math.cos(this.angle) * this.speed * time;
         this.y += Math.sin(this.angle) * this.speed * time;
 
-        if(Math.abs(this.x) > 2 || Math.abs(this.y) > 2){
+        if(Math.abs(this.x) > 20 || Math.abs(this.y) > 20){
           this.markForDelete = true;
         }
       }
       draw(ctx){
-        ctx.fillStyle = "black"
+        ctx.fillStyle = "orange"
+        if(this.origin.constructor.name == "GoodSpaceShip"){
+          ctx.fillStyle = "blue"
+        }
         ctx.fillRect(this.x-.1, this.y-.1, .2, .2)
       }
     }
@@ -65,8 +69,8 @@
         }
       }
       draw(ctx){
-        ctx.fillStyle = this.fillStyle
-        ctx.fillRect(this.x-.5, this.y-.5, 1, 1);
+        //ctx.fillStyle = this.fillStyle
+        //ctx.fillRect(this.x-.5, this.y-.5, 1, 1);
       }
     }
 
@@ -76,7 +80,7 @@
         this.fillStyle = "green"
       }
       fire() {
-        let toAdd = new Laser(this.x, this.y, 1, Math.PI / 4)
+        let toAdd = new Laser(this.x, this.y, 1, -Math.PI/2, this)
         gameObjects.push(toAdd)
       }
     }
@@ -85,16 +89,24 @@
       constructor(x, y) {
         super(x, y)
       }
+      update(time){
+        super.update(time);
+        this.y += time * .1
+      }
       fire() {
-        for (let i = 0; i < 10; i++) {
-          let toAdd = new Laser(this.x, this.y, 1, (i/10) * Math.PI * 2)
+        let num = 1000;
+        for (let i = 0; i < num; i++) {
+          let toAdd = new Laser(this.x, this.y, 1, (i/num) * Math.PI * 2, this)
           gameObjects.push(toAdd)
         }
       }
     }
 
-    let goodSpaceShip = new GoodSpaceShip(0,0);
-    gameObjects.push(goodSpaceShip);
+    //let goodSpaceShip = new GoodSpaceShip(0,0);
+    //gameObjects.push(goodSpaceShip);
+
+    let badSpaceShip = new EnemySpaceShip(0, -4);
+    gameObjects.push(badSpaceShip);
 
 
 
@@ -105,6 +117,25 @@
 
     }
 
+    function inCollision(bullet, ship){
+      let width = 1
+      let minX  = ship.x - width/2;
+      let minY = ship.y - width/2;
+      let maxX = ship.x + width/2;
+      let maxY = ship.y + width/2
+      return bullet.x > minX && bullet.y > minY && bullet.x < maxX && bullet.y < maxY
+    }
+
+    function inBulletCollision(a, b){
+      let d = Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
+      return d < .1;
+    }
+
+
+    let timeTillNextShip = 1;
+    let countFrames = 0;
+    let startTime = performance.now()
+    let fps = 0;
 
     function customUpdate(options, time) {
       //console.log("Custom Update")
@@ -120,6 +151,51 @@
       }
       gameObjects = preservedGameObjects;
 
+
+      //Do collision resolution
+      let allBullets = gameObjects.filter(g=>g.constructor.name == "Laser");
+      let goodBullets = allBullets.filter(g=>g.origin.constructor.name == "GoodSpaceShip")
+      let badBullets = allBullets.filter(g=>g.origin.constructor.name == "EnemySpaceShip")
+      let badShips = gameObjects.filter(g=>g.constructor.name == "EnemySpaceShip")
+      // for(let bullet of badBullets){
+      //   if(inCollision(bullet, goodSpaceShip)){
+      //     goodSpaceShip.markForDelete = true;
+      //   }
+      // }
+      for(let bullet of goodBullets){
+        for(let ship of badShips){
+          if(inCollision(bullet, ship)){
+            ship.markForDelete = true;
+          }
+        }
+      }
+      //Bullet self-collisions
+
+      for(let i = 0; i < allBullets.length; i++){
+        for(let j = 0; j < allBullets.length; j++){
+          if(inBulletCollision(allBullets[i], allBullets[j])){
+            if(i == j) continue;
+            if(allBullets[i].origin == allBullets[j].origin) continue;
+            allBullets[i].markForDelete = true;
+            allBullets[j].markForDelete = true;
+          }
+        }
+      }
+
+      timeTillNextShip -= time;
+      if(timeTillNextShip <= 0){
+        timeTillNextShip  = 1;
+        let badSpaceShip = new EnemySpaceShip((Math.random()*2-1) * 5, (Math.random()*2-1) * 5);
+        gameObjects.push(badSpaceShip);
+      }
+
+      countFrames++;
+      let now = performance.now()
+      let delta = (now - startTime)/1000;
+      fps = countFrames/delta;
+      //console.log(fps);
+      console.log(gameObjects.length)
+
     }
 
     function customDraw(ctx, options) {
@@ -132,6 +208,11 @@
 
     function customUI(ctx, options) {
       //console.log("Custom UI")
+      ctx.fillStyle = "black"
+      ctx.font = "30px arial"
+
+      let f = Math.floor(fps * 100)/100;
+      ctx.fillText("FPS: " + f, 100, 100);
     }
 
   </script>
