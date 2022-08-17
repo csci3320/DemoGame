@@ -12,14 +12,20 @@
     let state = 1;
 
     let gameObjects = []
+    let maxDistance = 20
+    let hashSize = maxDistance * 2 + 1;
+    let hash = [];
+    for (let i = 0; i < hashSize; i++) {
+      hash.push([])
+    }
 
-    class GameObject{
-      constructor(){
+    class GameObject {
+      constructor() {
         this.markForDelete = false;
       }
     }
 
-    class Ship extends GameObject{
+    class Ship extends GameObject {
       x
       y
       constructor(x, y) {
@@ -29,7 +35,7 @@
       }
     }
 
-    class Laser extends GameObject{
+    class Laser extends GameObject {
       constructor(x, y, speed, angle, origin) {
         super()
         this.x = x;
@@ -42,16 +48,19 @@
         this.x += Math.cos(this.angle) * this.speed * time;
         this.y += Math.sin(this.angle) * this.speed * time;
 
-        if(Math.abs(this.x) > 20 || Math.abs(this.y) > 20){
+        if (Math.abs(this.x) > 10 || Math.abs(this.y) > 5) {
           this.markForDelete = true;
         }
       }
-      draw(ctx){
+      draw(ctx) {
         ctx.fillStyle = "orange"
-        if(this.origin.constructor.name == "GoodSpaceShip"){
+        if (this.origin.constructor.name == "GoodSpaceShip") {
           ctx.fillStyle = "blue"
         }
-        ctx.fillRect(this.x-.1, this.y-.1, .2, .2)
+        //ctx.fillRect(this.x - .1, this.y - .1, .2, .2)
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, .1, 0, Math.PI*2)
+        ctx.fill()
       }
     }
 
@@ -59,7 +68,7 @@
       constructor(x, y) {
         super(x, y)
         this.timeToFire = 1
-        this.fillStyle = "red"
+        this.fillStyle = "blue"
       }
       update(time) {
         this.timeToFire -= time
@@ -68,9 +77,9 @@
           this.timeToFire = 1
         }
       }
-      draw(ctx){
-        //ctx.fillStyle = this.fillStyle
-        //ctx.fillRect(this.x-.5, this.y-.5, 1, 1);
+      draw(ctx) {
+        ctx.fillStyle = this.fillStyle
+        ctx.fillRect(this.x - .1, this.y - .1, .2, .2);
       }
     }
 
@@ -80,7 +89,7 @@
         this.fillStyle = "green"
       }
       fire() {
-        let toAdd = new Laser(this.x, this.y, 1, -Math.PI/2, this)
+        let toAdd = new Laser(this.x, this.y, 1, -Math.PI / 2, this)
         gameObjects.push(toAdd)
       }
     }
@@ -89,14 +98,16 @@
       constructor(x, y) {
         super(x, y)
       }
-      update(time){
+      update(time) {
         super.update(time);
         this.y += time * .1
+        if(this.y > 5)
+          this.markForDelete = true;
       }
       fire() {
-        let num = 1000;
+        let num = 300;
         for (let i = 0; i < num; i++) {
-          let toAdd = new Laser(this.x, this.y, 1, (i/num) * Math.PI * 2, this)
+          let toAdd = new Laser(this.x, this.y, 1, (i / num) * Math.PI * 2, this)
           gameObjects.push(toAdd)
         }
       }
@@ -117,17 +128,17 @@
 
     }
 
-    function inCollision(bullet, ship){
+    function inCollision(bullet, ship) {
       let width = 1
-      let minX  = ship.x - width/2;
-      let minY = ship.y - width/2;
-      let maxX = ship.x + width/2;
-      let maxY = ship.y + width/2
+      let minX = ship.x - width / 2;
+      let minY = ship.y - width / 2;
+      let maxX = ship.x + width / 2;
+      let maxY = ship.y + width / 2
       return bullet.x > minX && bullet.y > minY && bullet.x < maxX && bullet.y < maxY
     }
 
-    function inBulletCollision(a, b){
-      let d = Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
+    function inBulletCollision(a, b) {
+      let d = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
       return d < .1;
     }
 
@@ -139,60 +150,84 @@
 
     function customUpdate(options, time) {
       //console.log("Custom Update")
-      for(let gameObject of gameObjects){
+      for (let gameObject of gameObjects) {
         gameObject.update(time);
       }
 
       //Prune
       let preservedGameObjects = []
-      for(let gameObject of gameObjects){
-        if(!gameObject.markForDelete)
+      for (let gameObject of gameObjects) {
+        if (!gameObject.markForDelete)
           preservedGameObjects.push(gameObject)
       }
       gameObjects = preservedGameObjects;
 
+      //Do the hashing
+
+      hash = [];
+      for (let i = 0; i < hashSize; i++) {
+        let toAdd = [];
+        for (let j = 0; j < hashSize; j++) {
+          toAdd.push([])
+        }
+        hash.push(toAdd);
+      }
+
 
       //Do collision resolution
-      let allBullets = gameObjects.filter(g=>g.constructor.name == "Laser");
-      let goodBullets = allBullets.filter(g=>g.origin.constructor.name == "GoodSpaceShip")
-      let badBullets = allBullets.filter(g=>g.origin.constructor.name == "EnemySpaceShip")
-      let badShips = gameObjects.filter(g=>g.constructor.name == "EnemySpaceShip")
-      // for(let bullet of badBullets){
-      //   if(inCollision(bullet, goodSpaceShip)){
-      //     goodSpaceShip.markForDelete = true;
-      //   }
-      // }
-      for(let bullet of goodBullets){
-        for(let ship of badShips){
-          if(inCollision(bullet, ship)){
-            ship.markForDelete = true;
+      let allBullets = gameObjects.filter(g => g.constructor.name == "Laser");
+
+      for (let bullet of allBullets) {
+        let x = Math.floor(bullet.x) + maxDistance;
+        let y = Math.floor(bullet.y) + maxDistance;
+        hash[x][y].push(bullet)
+      }
+
+      let useHash = false;
+
+      //Bullet self-collisions
+      if (!useHash) {
+        for (let i = 0; i < allBullets.length; i++) {
+          for (let j = 0; j < allBullets.length; j++) {
+            if (i == j) continue;
+            if (allBullets[i].origin == allBullets[j].origin) continue;
+            if (inBulletCollision(allBullets[i], allBullets[j])) {
+              allBullets[i].markForDelete = true;
+              allBullets[j].markForDelete = true;
+            }
           }
         }
       }
-      //Bullet self-collisions
-
-      for(let i = 0; i < allBullets.length; i++){
-        for(let j = 0; j < allBullets.length; j++){
-          if(inBulletCollision(allBullets[i], allBullets[j])){
-            if(i == j) continue;
-            if(allBullets[i].origin == allBullets[j].origin) continue;
-            allBullets[i].markForDelete = true;
-            allBullets[j].markForDelete = true;
+      else {
+        for (let i = 0; i < hashSize; i++) {
+          for (let j = 0; j < hashSize; j++) {
+            let bin = hash[i][j]
+            for (let i = 0; i < bin.length; i++) {
+              for (let j = 0; j < bin.length; j++) {
+                if (i == j) continue;
+                if (bin[i].origin == bin[j].origin) continue;
+                if (inBulletCollision(bin[i], bin[j])) {
+                  bin[i].markForDelete = true;
+                  bin[j].markForDelete = true;
+                }
+              }
+            }
           }
+
         }
       }
 
       timeTillNextShip -= time;
-      if(timeTillNextShip <= 0){
-        timeTillNextShip  = 1;
-        let badSpaceShip = new EnemySpaceShip((Math.random()*2-1) * 5, (Math.random()*2-1) * 5);
+      if (timeTillNextShip <= 0 && gameObjects.filter(g=>g.constructor.name == "EnemySpaceShip").length < 10) {
+        timeTillNextShip = 1;
+        let badSpaceShip = new EnemySpaceShip((Math.random() * 2 - 1) * 5, (Math.random() * 2 - 1) * 5);
         gameObjects.push(badSpaceShip);
       }
 
       countFrames++;
       let now = performance.now()
-      let delta = (now - startTime)/1000;
-      fps = countFrames/delta;
+      let delta = (now - startTime) / 1000;
+      fps = countFrames / delta;
       //console.log(fps);
       console.log(gameObjects.length)
 
@@ -200,7 +235,7 @@
 
     function customDraw(ctx, options) {
       //console.log("Custom Draw")
-      for(let gameObject of gameObjects){
+      for (let gameObject of gameObjects) {
         gameObject.draw(ctx);
       }
 
@@ -211,7 +246,7 @@
       ctx.fillStyle = "black"
       ctx.font = "30px arial"
 
-      let f = Math.floor(fps * 100)/100;
+      let f = Math.floor(fps * 100) / 100;
       ctx.fillText("FPS: " + f, 100, 100);
     }
 
