@@ -15,6 +15,8 @@
     let maxDistance = 20
     let hashSize = maxDistance * 2 + 1;
     let hash = [];
+    let useHash = false;
+
     for (let i = 0; i < hashSize; i++) {
       hash.push([])
     }
@@ -83,16 +85,16 @@
       }
     }
 
-    class GoodSpaceShip extends SpaceShip {
-      constructor(x, y) {
-        super(x, y)
-        this.fillStyle = "green"
-      }
-      fire() {
-        let toAdd = new Laser(this.x, this.y, 1, -Math.PI / 2, this)
-        gameObjects.push(toAdd)
-      }
-    }
+    // class GoodSpaceShip extends SpaceShip {
+    //   constructor(x, y) {
+    //     super(x, y)
+    //     this.fillStyle = "green"
+    //   }
+    //   fire() {
+    //     let toAdd = new Laser(this.x, this.y, 1, -Math.PI / 2, this)
+    //     gameObjects.push(toAdd)
+    //   }
+    // }
 
     class EnemySpaceShip extends SpaceShip {
       constructor(x, y) {
@@ -183,8 +185,7 @@
         hash[x][y].push(bullet)
       }
 
-      let useHash = false;
-
+      
       //Bullet self-collisions
       if (!useHash) {
         for (let i = 0; i < allBullets.length; i++) {
@@ -218,7 +219,7 @@
       }
 
       timeTillNextShip -= time;
-      if (timeTillNextShip <= 0 && gameObjects.filter(g=>g.constructor.name == "EnemySpaceShip").length < 10) {
+      if (timeTillNextShip <= 0 && gameObjects.filter(g=>g.constructor.name == "EnemySpaceShip").length < 5) {
         timeTillNextShip = 1;
         let badSpaceShip = new EnemySpaceShip((Math.random() * 2 - 1) * 5, (Math.random() * 2 - 1) * 5);
         gameObjects.push(badSpaceShip);
